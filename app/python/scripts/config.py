@@ -1,11 +1,9 @@
 import os
 
-local_path = os.path.abspath(os.getcwd())
-work_path = os.path.dirname(local_path) 
+local_path = os.getcwd()
 
 configs = {
-      "bronze_path": f"{work_path}\\data\\bronze",
-      "meta_path": f"{work_path}\\data",
+      "bronze_path": f"{local_path}/app/python/data/bronze"
    }
 
 def project_folders(configs):

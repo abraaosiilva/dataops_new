@@ -10,6 +10,7 @@ import uuid
 import mysql.connector
 import pandas as pd
 import requests
+import socket
 
 from sqlalchemy import create_engine
 from config import configs, project_folders
@@ -49,7 +50,7 @@ def create_bronze_layer(data):
     """
     try:
         t = datetime.now().strftime('%H_%M_%S')
-        filename = f"{configs['bronze_path']}\\{t}_{uuid.uuid4()}.csv"
+        filename = f"{configs['bronze_path']}/{t}_{uuid.uuid4()}.csv"
         data.to_csv(filename, sep=';', index=False)
         logging.info('Camada bronze criada')
     except (PermissionError, FileNotFoundError) as e:
@@ -108,15 +109,19 @@ def connect_and_save_to_mysql(data):
     """
     Função para conectar ao banco de dados MySQL e salvar os dados na tabela 'cadastro'.
     """
-    try:
-        engine = create_engine(
-            f"mysql+mysqlconnector://root:{os.environ['DB_PASSWORD']}@mysql:3306/db"
-        )
-        timeout = 60  
-        start_time = time.time()
-        while time.time() - start_time <= timeout:
+    timeout = 60  
+    start_time = time.time()
+    while time.time() - start_time <= timeout:
+        try:
+            if socket.gethostname().find('codespaces') > -1:
+                hostname='127.0.0.1'
+            else:
+                hostname='mysql'
+            engine = create_engine(
+                    f"mysql+mysqlconnector://root:{os.environ['DB_PASSWORD']}@{hostname}:3306/db"
+                )
             logging.info('Tentando conexão...')
-            time.sleep(20)
+            time.sleep(5)
             if engine.connect():
                 logging.info('Conectado ao db')
                 data.to_sql('cadastro', con=engine, if_exists='append', index=False)
@@ -124,12 +129,12 @@ def connect_and_save_to_mysql(data):
                 logging.info('Salvo na camada silver - mysql')
                 sys.exit(0)
             else:
-                logging.info('Nova tentativa em alguns segundos...')
-                time.sleep(10)
-        logging.info('Servidor indisponível.')
-    except Exception as e:
-        logging.error('Erro ao conectar e salvar dados no MySQL: %s', e)
-        sys.exit()
+                logging.info('Nova tentativa em 5 segundos...')
+                time.sleep(5)
+        except Exception as e:
+            logging.error('Erro ao conectar e salvar dados no MySQL: %s', e)
+            sys.exit()
+    logging.info('Servidor indisponível.')
 
 def main():
     """
@@ -141,6 +146,8 @@ def main():
         create_bronze_layer(data)
         processed_data = process_data(data)
         connect_and_save_to_mysql(processed_data)
+        logging.info(f"{configs['bronze_path']}" )
+        logging.info(f"{os.listdir(configs['bronze_path'])}" )
     except Exception as e:
         logging.error('Erro ao executar o processo: %s', e)
         sys.exit(1)
