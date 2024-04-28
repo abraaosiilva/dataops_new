@@ -3,7 +3,7 @@ name: avaliação do código - PyLint
 on:
   push:
     branches:
-      - main  # ou qualquer outra branch que você deseja monitorar para testes
+      - main # ou qualquer outra branch que você deseja monitorar para testes
 
 jobs:
   pylint:
@@ -13,49 +13,49 @@ jobs:
       pylint_result: ${{ steps.result.outputs.pylint_result }}
 
     steps:
-    - name: Download repo
-      uses: actions/checkout@v4
+      - name: Download repo
+        uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Setup pylint
-      run: pip install pylint
+      - name: Setup pylint
+        run: pip install pylint
 
-    - name: Install requirements
-      run: |
-        pip install --upgrade pip  
-        pip install -r app/python/requirements.txt
-    
-    - name: Pylint warnings
-      run: |
-        echo &&
-        pylint -sn --output-format=parseable \
-        --msg-template="{line:3d},{column}:{msg}" \
-        app/python/scripts/get_data.py
-      continue-on-error: true
-      
-    - name: Pylint results
-      id: result
-      run: |
-        pylint_score=$(pylint app/python/scripts/get_data.py | sed -n 's/^Your code has been rated at \([-0-9.]*\)\/.*/\1/p' )
-        pylint_score=$(echo "$pylint_score" | bc)
-        echo "Score pylint $pylint_score"
-        if [ $(echo "$pylint_score >= 7" | bc -l) ]; then
-          echo "pylint_result="success"" >> "$GITHUB_OUTPUT"
-          echo "success"
-        else
-          echo "pylint_result="failure"" >> "$GITHUB_OUTPUT"
-          echo "failure"
-        fi
-  
+      - name: Install requirements
+        run: |
+          pip install --upgrade pip  
+          pip install -r app/python/requirements.txt
+
+      - name: Pylint warnings
+        run: |
+          echo &&
+          pylint -sn --output-format=parseable \
+          --msg-template="{line:3d},{column}:{msg}" \
+          app/python/scripts/get_data.py
+        continue-on-error: true
+
+      - name: Pylint results
+        id: result
+        run: |
+          pylint_score=$(pylint app/python/scripts/get_data.py | sed -n 's/^Your code has been rated at \([-0-9.]*\)\/.*/\1/p' )
+          pylint_score=$(echo "$pylint_score" | bc)
+          echo "Score pylint $pylint_score"
+          if [ $(echo "$pylint_score >= 7" | bc -l) ]; then
+            echo "pylint_result="success"" >> "$GITHUB_OUTPUT"
+            echo "success"
+          else
+            echo "pylint_result="failure"" >> "$GITHUB_OUTPUT"
+            echo "failure"
+          fi
+
   dockerhub:
     needs: pylint
     runs-on: ubuntu-latest
     if: needs.pylint.outputs.pylint_result == 'success'
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -68,6 +68,6 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t rpadolfo/python-dataops:latest app/python/
-        
+
       - name: Upload python image to Docker Hub
         run: docker push rpadolfo/python-dataops:latest
